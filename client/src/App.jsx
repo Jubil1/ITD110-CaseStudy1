@@ -15,12 +15,14 @@ import "./App.css";
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 const API_BASE = "http://localhost:5000/api/forms";
+const DOCUMENT_TYPES = ["All", "ISO Form", "Special Order", "Calendar", "Memo", "Guide"];
 
 const initialForm = {
   title: "",
   description: "",
   office: "",
   category: "",
+  documentType: "ISO Form",
   tags: "",
   fileUrl: "",
 };
@@ -30,13 +32,18 @@ export default function App() {
   const [editingId, setEditingId] = useState("");
   const [forms, setForms] = useState([]);
   const [search, setSearch] = useState("");
+  const [documentTypeFilter, setDocumentTypeFilter] = useState("All");
   const [activeTab, setActiveTab] = useState("intro");
   const [stats, setStats] = useState({ totalForms: 0, byCategory: [], topDownloaded: [] });
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState({ type: "", message: "" });
 
-  const loadForms = async (q = "") => {
-    const res = await axios.get(`${API_BASE}?q=${encodeURIComponent(q)}`);
+  const loadForms = async (q = "", docType = "All") => {
+    const params = new URLSearchParams();
+    if (q) params.set("q", q);
+    if (docType && docType !== "All") params.set("documentType", docType);
+    const qs = params.toString();
+    const res = await axios.get(qs ? `${API_BASE}?${qs}` : API_BASE);
     setForms(res.data);
   };
 
@@ -45,10 +52,10 @@ export default function App() {
     setStats(res.data);
   };
 
-  const refreshAll = async (q = "") => {
+  const refreshAll = async (q = "", docType = "All") => {
     setLoading(true);
     try {
-      await Promise.all([loadForms(q), loadStats()]);
+      await Promise.all([loadForms(q, docType), loadStats()]);
     } finally {
       setLoading(false);
     }
@@ -85,7 +92,7 @@ export default function App() {
 
       setFormData(initialForm);
       setEditingId("");
-      refreshAll(search);
+      refreshAll(search, documentTypeFilter);
     } catch (_error) {
       showToast("error", "Unable to save form. Please check your input.");
     }
@@ -99,7 +106,7 @@ export default function App() {
         setEditingId("");
       }
       showToast("success", "Form deleted.");
-      refreshAll(search);
+      refreshAll(search, documentTypeFilter);
     } catch (_error) {
       showToast("error", "Unable to delete form.");
     }
@@ -108,7 +115,7 @@ export default function App() {
   const onSearch = async (e) => {
     e.preventDefault();
     try {
-      await refreshAll(search);
+      await refreshAll(search, documentTypeFilter);
       showToast("success", "Search completed.");
     } catch (_error) {
       showToast("error", "Search failed.");
@@ -122,6 +129,7 @@ export default function App() {
       description: form.description || "",
       office: form.office || "",
       category: form.category || "",
+      documentType: form.documentType || "ISO Form",
       tags: Array.isArray(form.tags) ? form.tags.join(", ") : "",
       fileUrl: form.fileUrl || "",
     });
@@ -236,6 +244,20 @@ export default function App() {
           <section className="card">
             <h2>Search + Backup</h2>
             <form onSubmit={onSearch} className="row">
+              <select
+                value={documentTypeFilter}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  setDocumentTypeFilter(next);
+                  refreshAll(search, next);
+                }}
+              >
+                {DOCUMENT_TYPES.map((type) => (
+                  <option key={type} value={type}>
+                    {type}
+                  </option>
+                ))}
+              </select>
               <input
                 placeholder="Search title/description/tag"
                 value={search}
@@ -244,10 +266,13 @@ export default function App() {
               <button type="submit" className="primary">
                 Search
               </button>
-              <a href={`${API_BASE}/backup/json`} target="_blank" rel="noreferrer">
-                <button type="button" className="primary">
-                  Download JSON Backup
-                </button>
+              <a
+                className="backup-link"
+                href={`${API_BASE}/backup/json`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Download JSON Backup
               </a>
             </form>
           </section>
@@ -282,6 +307,7 @@ export default function App() {
                     <div className="item-details">
                       <strong>{f.title}</strong>
                       <div className="badges">
+                        <span className="badge">{f.documentType || "ISO Form"}</span>
                         <span className="badge">{f.office}</span>
                         <span className="badge">{f.category}</span>
                       </div>
@@ -290,7 +316,7 @@ export default function App() {
                       </p>
                       <small>{f.description}</small>
                       <br />
-                      <a href={f.fileUrl} target="_blank" rel="noreferrer">
+                      <a href={`${API_BASE}/${f._id}/open`} target="_blank" rel="noreferrer">
                         Open Form
                       </a>
                     </div>
@@ -325,6 +351,16 @@ export default function App() {
                 onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                 required
               />
+              <select
+                value={formData.documentType}
+                onChange={(e) => setFormData({ ...formData, documentType: e.target.value })}
+              >
+                {DOCUMENT_TYPES.filter((type) => type !== "All").map((type) => (
+                  <option key={type} value={type}>
+                    {type}
+                  </option>
+                ))}
+              </select>
               <input
                 placeholder="File URL"
                 value={formData.fileUrl}
@@ -363,6 +399,7 @@ export default function App() {
                     <div className="item-details">
                       <strong>{f.title}</strong>
                       <div className="badges">
+                        <span className="badge">{f.documentType || "ISO Form"}</span>
                         <span className="badge">{f.office}</span>
                         <span className="badge">{f.category}</span>
                       </div>

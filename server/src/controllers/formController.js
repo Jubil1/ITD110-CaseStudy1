@@ -13,18 +13,33 @@ exports.createForm = async (req, res) => {
 // Read all + search
 exports.getForms = async (req, res) => {
   try {
-    const { q, office, category } = req.query;
+    const { q, office, category, documentType } = req.query;
     const filter = {};
 
     if (office) filter.office = office;
     if (category) filter.category = category;
+    if (documentType && documentType !== "All") {
+      // Keep legacy records visible under ISO Form even if field is missing.
+      if (documentType === "ISO Form") {
+        filter.$or = [{ documentType: "ISO Form" }, { documentType: { $exists: false } }];
+      } else {
+        filter.documentType = documentType;
+      }
+    }
 
     if (q) {
-      filter.$or = [
+      const searchOr = [
         { title: { $regex: q, $options: "i" } },
         { description: { $regex: q, $options: "i" } },
         { tags: { $elemMatch: { $regex: q, $options: "i" } } }
       ];
+
+      if (filter.$or) {
+        filter.$and = [{ $or: filter.$or }, { $or: searchOr }];
+        delete filter.$or;
+      } else {
+        filter.$or = searchOr;
+      }
     }
 
     const forms = await Form.find(filter).sort({ createdAt: -1 });
@@ -67,6 +82,21 @@ exports.deleteForm = async (req, res) => {
     res.json({ message: "Form deleted" });
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+};
+
+// Track download + redirect to file URL
+exports.openForm = async (req, res) => {
+  try {
+    const form = await Form.findById(req.params.id);
+    if (!form) return res.status(404).json({ message: "Form not found" });
+
+    form.downloadCount += 1;
+    await form.save();
+
+    return res.redirect(form.fileUrl);
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
   }
 };
 

@@ -6,6 +6,7 @@ const formSchema = new mongoose.Schema(
     description: { type: String, default: "" },
     office: { type: String, required: true, trim: true },
     category: { type: String, required: true, trim: true },
+    documentType: { type: String, default: "ISO Form", trim: true },
     tags: [{ type: String, trim: true }],
     fileUrl: { type: String, required: true, trim: true },
     isActive: { type: Boolean, default: true },

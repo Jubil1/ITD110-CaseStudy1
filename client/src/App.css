@@ -79,7 +79,7 @@ h1 {
 }
 
 .tab-panel {
-  max-width: 980px;
+  max-width: 600px;
   margin: 0 auto;
 }
 
@@ -180,10 +180,13 @@ h1 {
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
 }
 
 input,
 textarea,
+select,
 button {
   padding: 10px 12px;
   border: 1px solid #cbd5e1;
@@ -192,13 +195,15 @@ button {
 }
 
 input,
-textarea {
+textarea,
+select {
   background: #ffffff;
   color: #0f172a;
 }
 
 input:focus,
-textarea:focus {
+textarea:focus,
+select:focus {
   outline: 2px solid #93c5fd;
   border-color: #60a5fa;
 }
@@ -217,6 +222,21 @@ button:hover {
 
 .primary {
   background: #2563eb;
+}
+
+.backup-link {
+  color: #1d4ed8;
+  font-weight: 600;
+  text-decoration: none;
+  padding: 6px 0;
+  font-size: 0.88rem;
+  display: block;
+  text-align: center;
+  width: 100%;
+}
+
+.backup-link:hover {
+  text-decoration: underline;
 }
 
 .secondary {
