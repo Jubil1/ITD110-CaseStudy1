@@ -6,9 +6,7 @@ A web application that helps students quickly find, search, and manage school do
 
 ## Demo Video
 
-- Watch the project walkthrough here: **[Demo Video](https://github.com/user-attachments/assets/2b3e500a-ac28-4632-a482-61751133916e)**
-
-> Replace the placeholder link above with your actual uploaded video link (Google Drive, YouTube unlisted, or GitHub-hosted asset).
+**https://github.com/user-attachments/assets/2b3e500a-ac28-4632-a482-61751133916e)**
 
 ## Features
 
