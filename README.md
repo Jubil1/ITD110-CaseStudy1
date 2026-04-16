@@ -27,10 +27,38 @@ https://github.com/user-attachments/assets/2b3e500a-ac28-4632-a482-61751133916e
 
 ## Project Structure
 
-- `client/` - React frontend
-- `server/` - Express + MongoDB backend
-- `server/public/forms/` - locally hosted document files
-- `docs/` - project documentation
+```text
+ITD110-CaseStudy1/
+├── README.md
+├── docs/
+│   └── project-context.md
+├── client/                          # React + Vite frontend
+│   ├── index.html
+│   ├── vite.config.js
+│   ├── eslint.config.js
+│   ├── package.json
+│   └── src/
+│       ├── main.jsx                 # App entry
+│       ├── App.jsx                  # UI, tabs, CRUD, search, dashboard
+│       ├── App.css
+│       ├── index.css
+│       └── assets/                  # Static images (hero, etc.)
+└── server/                          # Express + MongoDB API
+    ├── package.json
+    ├── public/
+    │   └── forms/                   # Optional: .pdf / .doc(x) for `http://localhost:5000/forms/...`
+    └── src/
+        ├── server.js                # HTTP server bootstrap
+        ├── app.js                   # Express app, middleware, static `/forms`
+        ├── config/
+        │   └── db.js                # MongoDB connection
+        ├── controllers/
+        │   └── formController.js    # CRUD, search, stats, export, download tracking
+        ├── models/
+        │   └── Form.js              # Mongoose schema
+        └── routes/
+            └── formRoutes.js        # `/api/forms` routes
+```
 
 ## Prerequisites
 
