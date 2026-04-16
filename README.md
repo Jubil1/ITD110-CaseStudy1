@@ -2,14 +2,16 @@
 
 ## Student Document Repository System
 
-A web application that helps students quickly find, search, and manage school forms (e.g., subject withdrawal, INC completion, shifting forms).
+A web application that helps students quickly find, search, and manage school documents (e.g., ISO forms, registrar forms, and other student-facing files).
 
 ## Features
 
-- CRUD operations for form records
+- CRUD operations for document records
 - Search by keyword (title, description, tags)
-- Dashboard data visualization (forms per category)
-- JSON backup download
+- Filter by document type (`ISO Form`, `Special Order`, `Calendar`, `Memo`, `Guide`)
+- Dashboard data visualization (documents per category + top downloaded)
+- JSON export download
+- Download tracking (`downloadCount`) when a document is opened
 - MongoDB backend using Express
 
 ## Tech Stack
@@ -23,6 +25,7 @@ A web application that helps students quickly find, search, and manage school fo
 
 - `client/` - React frontend
 - `server/` - Express + MongoDB backend
+- `server/public/forms/` - locally hosted document files
 - `docs/` - project documentation
 
 ## Prerequisites
@@ -53,19 +56,32 @@ npm run dev
 Frontend usually runs at `http://localhost:5173`.
 If port `5173` is busy, Vite automatically uses another port (e.g., `http://localhost:5174`).
 
+### 3) (Optional) Add local files for serving
+
+Put `.doc/.docx/.pdf` files in:
+
+`server/public/forms`
+
+Then use file links like:
+
+`http://localhost:5000/forms/<filename>`
+
 ## API Endpoints
 
-- `GET /api/forms` - list forms
-- `GET /api/forms?q=keyword` - search forms
-- `POST /api/forms` - create form
-- `PUT /api/forms/:id` - update form
-- `DELETE /api/forms/:id` - delete form
+- `GET /api/forms` - list documents
+- `GET /api/forms?q=keyword` - search documents
+- `GET /api/forms?documentType=ISO%20Form` - filter by document type
+- `POST /api/forms` - create document
+- `PUT /api/forms/:id` - update document
+- `DELETE /api/forms/:id` - delete document
 - `GET /api/forms/dashboard/stats` - dashboard stats
-- `GET /api/forms/backup/json` - download JSON backup
+- `GET /api/forms/backup/json` - download JSON export
+- `GET /api/forms/:id/open` - increment `downloadCount` and open file
 
 ## Notes for Demo
 
 - Ensure backend is running before opening frontend
-- Use the Add/Edit/Delete form controls for CRUD demonstration
+- Use the Add/Edit/Delete controls in `Manage Forms (CRUD)` for full CRUD demo
 - Use Search and Dashboard sections to show required features
-- Use "Download JSON Backup" to demonstrate backup requirement
+- Use the `File Repository` tab to demonstrate document browsing and filtering
+- Use `Download JSON` to demonstrate backup/export requirement
