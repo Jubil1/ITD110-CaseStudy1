@@ -1,20 +1,22 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import axios from "axios";
 import {
   Chart as ChartJS,
   CategoryScale,
   LinearScale,
   BarElement,
+  ArcElement,
   Title,
   Tooltip,
   Legend,
 } from "chart.js";
-import { Bar } from "react-chartjs-2";
+import { Bar, Doughnut } from "react-chartjs-2";
 import "./App.css";
 
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
+ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Title, Tooltip, Legend);
 
 const API_BASE = "http://localhost:5000/api/forms";
+const AUTH_BASE = "http://localhost:5000/api/auth";
 const DOCUMENT_TYPES = ["All", "ISO Form", "Special Order", "Calendar", "Memo", "Guide"];
 
 const initialForm = {
@@ -28,6 +30,20 @@ const initialForm = {
 };
 
 export default function App() {
+  /* ───── Auth State ───── */
+  const [user, setUser] = useState(() => {
+    const stored = localStorage.getItem("user");
+    return stored ? JSON.parse(stored) : null;
+  });
+  const [token, setToken] = useState(() => localStorage.getItem("token") || "");
+  const [authTab, setAuthTab] = useState("login"); // "login" | "register"
+  const [authForm, setAuthForm] = useState({ username: "", password: "", role: "student" });
+  const [authError, setAuthError] = useState("");
+  const [authLoading, setAuthLoading] = useState(false);
+
+  const isAdmin = user?.role === "admin";
+
+  /* ───── App State ───── */
   const [formData, setFormData] = useState(initialForm);
   const [editingId, setEditingId] = useState("");
   const [forms, setForms] = useState([]);
@@ -38,6 +54,63 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState({ type: "", message: "" });
 
+  /* ───── Auth helpers ───── */
+  const authHeaders = useCallback(() => {
+    return token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+  }, [token]);
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setAuthError("");
+    setAuthLoading(true);
+    try {
+      const res = await axios.post(`${AUTH_BASE}/login`, {
+        username: authForm.username,
+        password: authForm.password,
+      });
+      setUser({ _id: res.data._id, username: res.data.username, role: res.data.role });
+      setToken(res.data.token);
+      localStorage.setItem("user", JSON.stringify({ _id: res.data._id, username: res.data.username, role: res.data.role }));
+      localStorage.setItem("token", res.data.token);
+      setAuthForm({ username: "", password: "", role: "student" });
+    } catch (err) {
+      setAuthError(err.response?.data?.message || "Login failed");
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleRegister = async (e) => {
+    e.preventDefault();
+    setAuthError("");
+    setAuthLoading(true);
+    try {
+      const res = await axios.post(`${AUTH_BASE}/register`, {
+        username: authForm.username,
+        password: authForm.password,
+        role: authForm.role,
+      });
+      setUser({ _id: res.data._id, username: res.data.username, role: res.data.role });
+      setToken(res.data.token);
+      localStorage.setItem("user", JSON.stringify({ _id: res.data._id, username: res.data.username, role: res.data.role }));
+      localStorage.setItem("token", res.data.token);
+      setAuthForm({ username: "", password: "", role: "student" });
+    } catch (err) {
+      setAuthError(err.response?.data?.message || "Registration failed");
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleLogout = () => {
+    setUser(null);
+    setToken("");
+    localStorage.removeItem("user");
+    localStorage.removeItem("token");
+    setActiveTab("intro");
+  };
+
+  /* ───── Data fetching ───── */
   const loadForms = async (q = "", docType = "All") => {
     const params = new URLSearchParams();
     if (q) params.set("q", q);
@@ -83,10 +156,10 @@ export default function App() {
 
     try {
       if (editingId) {
-        await axios.put(`${API_BASE}/${editingId}`, buildPayload());
+        await axios.put(`${API_BASE}/${editingId}`, buildPayload(), authHeaders());
         showToast("success", "Form updated successfully.");
       } else {
-        await axios.post(API_BASE, buildPayload());
+        await axios.post(API_BASE, buildPayload(), authHeaders());
         showToast("success", "Form saved successfully.");
       }
 
@@ -100,7 +173,7 @@ export default function App() {
 
   const onDelete = async (id) => {
     try {
-      await axios.delete(`${API_BASE}/${id}`);
+      await axios.delete(`${API_BASE}/${id}`, authHeaders());
       if (editingId === id) {
         setFormData(initialForm);
         setEditingId("");
@@ -154,6 +227,133 @@ export default function App() {
     [stats.byCategory]
   );
 
+  const CHART_COLORS = [
+    "rgba(59, 130, 246, 0.7)",
+    "rgba(16, 185, 129, 0.7)",
+    "rgba(245, 158, 11, 0.7)",
+    "rgba(239, 68, 68, 0.7)",
+    "rgba(139, 92, 246, 0.7)",
+    "rgba(236, 72, 153, 0.7)",
+    "rgba(20, 184, 166, 0.7)",
+    "rgba(249, 115, 22, 0.7)",
+  ];
+
+  const downloadDoughnutData = useMemo(
+    () => ({
+      labels: stats.topDownloaded.map((x) => x.title),
+      datasets: [
+        {
+          data: stats.topDownloaded.map((x) => x.downloadCount),
+          backgroundColor: CHART_COLORS.slice(0, stats.topDownloaded.length),
+          borderWidth: 2,
+          borderColor: "#ffffff",
+        },
+      ],
+    }),
+    [stats.topDownloaded]
+  );
+
+  const downloadBarData = useMemo(
+    () => ({
+      labels: stats.topDownloaded.map((x) => x.title),
+      datasets: [
+        {
+          label: "Downloads",
+          data: stats.topDownloaded.map((x) => x.downloadCount),
+          backgroundColor: CHART_COLORS.slice(0, stats.topDownloaded.length),
+          borderRadius: 6,
+        },
+      ],
+    }),
+    [stats.topDownloaded]
+  );
+
+  /* ───── Auth Page ───── */
+  if (!user) {
+    return (
+      <div className="auth-wrapper">
+        <div className="auth-card">
+          <div className="auth-header">
+            <p className="eyebrow">ITD110 - NoSQL Databases - Case Study #1</p>
+            <h1 className="auth-title">Student Document Repository</h1>
+            <p className="auth-subtitle">Sign in to access the platform</p>
+          </div>
+
+          <div className="auth-tabs">
+            <button
+              type="button"
+              className={authTab === "login" ? "auth-tab active" : "auth-tab"}
+              onClick={() => { setAuthTab("login"); setAuthError(""); }}
+            >
+              Login
+            </button>
+            <button
+              type="button"
+              className={authTab === "register" ? "auth-tab active" : "auth-tab"}
+              onClick={() => { setAuthTab("register"); setAuthError(""); }}
+            >
+              Register
+            </button>
+          </div>
+
+          {authError && <div className="auth-error">{authError}</div>}
+
+          <form onSubmit={authTab === "login" ? handleLogin : handleRegister} className="auth-form">
+            <div className="auth-field">
+              <label htmlFor="auth-username">Username</label>
+              <input
+                id="auth-username"
+                type="text"
+                placeholder="Enter your username"
+                value={authForm.username}
+                onChange={(e) => setAuthForm({ ...authForm, username: e.target.value })}
+                required
+                autoFocus
+              />
+            </div>
+            <div className="auth-field">
+              <label htmlFor="auth-password">Password</label>
+              <input
+                id="auth-password"
+                type="password"
+                placeholder="Enter your password"
+                value={authForm.password}
+                onChange={(e) => setAuthForm({ ...authForm, password: e.target.value })}
+                required
+                minLength={6}
+              />
+            </div>
+            {authTab === "register" && (
+              <div className="auth-field">
+                <label htmlFor="auth-role">Role</label>
+                <select
+                  id="auth-role"
+                  value={authForm.role}
+                  onChange={(e) => setAuthForm({ ...authForm, role: e.target.value })}
+                >
+                  <option value="student">Student</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+            )}
+            <button type="submit" className="auth-submit" disabled={authLoading}>
+              {authLoading ? "Please wait..." : authTab === "login" ? "Sign In" : "Create Account"}
+            </button>
+          </form>
+
+          <p className="auth-switch">
+            {authTab === "login" ? (
+              <>Don&apos;t have an account? <button type="button" className="link-btn" onClick={() => { setAuthTab("register"); setAuthError(""); }}>Register</button></>
+            ) : (
+              <>Already have an account? <button type="button" className="link-btn" onClick={() => { setAuthTab("login"); setAuthError(""); }}>Login</button></>
+            )}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  /* ───── Main App ───── */
   return (
     <div className="container">
       <header className="hero">
@@ -164,7 +364,16 @@ export default function App() {
             Centralized form management for student academic transactions.
           </p>
         </div>
-        <div className="pill">{loading ? "Syncing..." : "Live Data"}</div>
+        <div className="hero-right">
+          <div className="user-info">
+            <span className="user-badge">{user.role === "admin" ? "👑 Admin" : "🎓 Student"}</span>
+            <span className="user-name">{user.username}</span>
+          </div>
+          <button type="button" className="logout-btn" onClick={handleLogout}>
+            Logout
+          </button>
+          <div className="pill">{loading ? "Syncing..." : "Live Data"}</div>
+        </div>
       </header>
 
       {toast.message && (
@@ -188,11 +397,20 @@ export default function App() {
         </button>
         <button
           type="button"
-          className={activeTab === "manage" ? "tab active" : "tab"}
-          onClick={() => setActiveTab("manage")}
+          className={activeTab === "dashboard" ? "tab active" : "tab"}
+          onClick={() => setActiveTab("dashboard")}
         >
-          Manage Forms (CRUD)
+          Dashboard
         </button>
+        {isAdmin && (
+          <button
+            type="button"
+            className={activeTab === "manage" ? "tab active" : "tab"}
+            onClick={() => setActiveTab("manage")}
+          >
+            Manage Forms (CRUD)
+          </button>
+        )}
       </nav>
 
       <main className="tab-panel">
@@ -278,25 +496,6 @@ export default function App() {
           </section>
 
           <section className="card">
-            <h2>Dashboard</h2>
-            <p className="muted">Total Forms: {stats.totalForms}</p>
-            <Bar data={chartData} />
-            {stats.topDownloaded.length > 0 && (
-              <div className="top-list">
-                <h3>Most Downloaded Forms</h3>
-                <ul>
-                  {stats.topDownloaded.map((item) => (
-                    <li key={item._id}>
-                      <span>{item.title}</span>
-                      <strong>{item.downloadCount}</strong>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </section>
-
-          <section className="card">
             <h2>Available Forms {loading ? "(Loading...)" : ""}</h2>
             {forms.length === 0 ? (
               <p className="empty">No forms found. Try a different keyword.</p>
@@ -328,7 +527,61 @@ export default function App() {
           </>
         )}
 
-        {activeTab === "manage" && (
+        {activeTab === "dashboard" && (
+          <>
+          <section className="card">
+            <h2>Forms by Category</h2>
+            <p className="muted">Total Forms: {stats.totalForms}</p>
+            <Bar data={chartData} />
+          </section>
+
+          {stats.topDownloaded.length > 0 && (
+            <section className="card">
+              <h2>Download Analytics</h2>
+              <p className="muted">Showing how many times each form has been viewed/downloaded by students</p>
+              <div className="charts-row">
+                <div className="chart-half">
+                  <h3>Top Downloaded Forms</h3>
+                  <Bar
+                    data={downloadBarData}
+                    options={{
+                      indexAxis: "y",
+                      responsive: true,
+                      plugins: {
+                        legend: { display: false },
+                      },
+                      scales: {
+                        x: {
+                          beginAtZero: true,
+                          ticks: { stepSize: 1 },
+                          title: { display: true, text: "Download Count" },
+                        },
+                      },
+                    }}
+                  />
+                </div>
+                <div className="chart-half">
+                  <h3>Download Distribution</h3>
+                  <Doughnut
+                    data={downloadDoughnutData}
+                    options={{
+                      responsive: true,
+                      plugins: {
+                        legend: {
+                          position: "bottom",
+                          labels: { padding: 14, usePointStyle: true, pointStyle: "circle" },
+                        },
+                      },
+                    }}
+                  />
+                </div>
+              </div>
+            </section>
+          )}
+          </>
+        )}
+
+        {activeTab === "manage" && isAdmin && (
           <>
           <section className="card">
             <h2>{editingId ? "Edit Form" : "Add New Form"}</h2>

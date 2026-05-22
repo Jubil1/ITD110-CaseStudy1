@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const path = require("path");
 const formRoutes = require("./routes/formRoutes");
+const authRoutes = require("./routes/authRoutes");
 
 const app = express();
 
@@ -13,6 +14,7 @@ app.get("/", (_req, res) => {
   res.json({ message: "ITD110 Case Study API running" });
 });
 
+app.use("/api/auth", authRoutes);
 app.use("/api/forms", formRoutes);
 
 module.exports = app;

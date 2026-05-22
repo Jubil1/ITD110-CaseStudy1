@@ -1,0 +1,18 @@
+[
+  {
+    "_id": "69e0f36fe2569f6e21821f0a",
+    "title": "Subject Withdrawal Form",
+    "description": "For withdrawal",
+    "office": "Registrar",
+    "category": "Academic",
+    "tags": [
+      "withdrawal"
+    ],
+    "fileUrl": "https://example.com/form.pdf",
+    "isActive": true,
+    "downloadCount": 0,
+    "createdAt": "2026-04-16T14:34:23.172Z",
+    "updatedAt": "2026-04-16T14:34:23.172Z",
+    "__v": 0
+  }
+]
